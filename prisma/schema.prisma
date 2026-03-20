@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String?   @unique
+  phone            String?   @unique
+  hubspotContactId String?
+  mergedIntoId     String?
+  createdAt        DateTime  @default(now())
+
+  identities    Identity[]
+  conversations Conversation[]
+  trips         Trip[]
+}
+
+model Identity {
+  id         String   @id @default(cuid())
+  userId     String
+  channel    String   // "whatsapp" | "instagram" | "web"
+  externalId String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([channel, externalId])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  channel   String
+  messages  Json     @default("[]") // [{role, content, ts}]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Trip {
+  id            String    @id @default(cuid())
+  userId        String
+  destination   String
+  startDate     DateTime?
+  endDate       DateTime?
+  status        String    @default("planning") // planning|priced|booked
+  budget        Float?
+  hubspotDealId String?
+  createdAt     DateTime  @default(now())
+
+  user              User               @relation(fields: [userId], references: [id])
+  itineraryVersions ItineraryVersion[]
+  bookings          Booking[]
+  documents         Document[]
+}
+
+model ItineraryVersion {
+  id        String   @id @default(cuid())
+  tripId    String
+  version   Int
+  data      Json
+  createdAt DateTime @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id])
+}
+
+model Booking {
+  id        String   @id @default(cuid())
+  tripId    String
+  type      String   // "flight" | "hotel"
+  provider  String?
+  price     Float?
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  tripId    String
+  type      String   // "proposal" | "invoice"
+  version   Int      @default(1)
+  url       String?
+  createdAt DateTime @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id])
+}
